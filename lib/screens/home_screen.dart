@@ -24,7 +24,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final audioHandler = getIt<MyAudioHandler>();
   HomeViewType _currentView = HomeViewType.albums;
 
-  // Cache para as músicas, álbuns e artistas. Evita buscas repetidas.
+  // Cache para as mídias, evitando buscas repetidas e lentidão
   List<SongModel> _songs = [];
   List<AlbumModel> _albums = [];
   List<ArtistModel> _artists = [];
@@ -43,77 +43,66 @@ class _HomeScreenState extends State<HomeScreen> {
       _songs = await _audioQuery.querySongs();
       _albums = await _audioQuery.queryAlbums(sortType: AlbumSortType.ARTIST);
       _artists = await _audioQuery.queryArtists();
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted)
+        setState(() {
+          _isLoading = false;
+        });
     } else {
-      // Se a permissão for negada, para de carregar
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted)
+        setState(() {
+          _isLoading = false;
+        });
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // O drawer agora recebe o audioHandler para passar para a tela de favoritos
       drawer: AppDrawer(audioHandler: audioHandler),
-      body: SafeArea(
-        bottom: false, // O MiniPlayer cuidará do espaço inferior
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : CustomScrollView(
-                slivers: [
-                  _buildFloatingAppBar(),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 0),
-                      child: Text(
-                        "Sugestão",
-                        style: Theme.of(context).textTheme.headlineSmall
-                            ?.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                  SliverToBoxAdapter(child: _buildSuggestionCard()),
-                  _buildViewSelector(),
-                  _buildCurrentView(),
-                ],
-              ),
-      ),
-    );
-  }
-
-  Widget _buildFloatingAppBar() {
-    return SliverAppBar(
-      floating: true,
-      snap: true,
-      elevation: 0,
-      backgroundColor: Colors.transparent,
-      flexibleSpace: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          child: GlassContainer(
-            borderRadius: 50,
-            child: Row(
-              children: [
-                Builder(
-                  builder: (context) {
-                    return IconButton(
-                      icon: const Icon(Icons.menu),
-                      onPressed: () => Scaffold.of(context).openDrawer(),
-                    );
-                  },
-                ),
-                const Text(
-                  "Whale Music",
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ],
+      // Usamos extendBodyBehindAppBar para que o CustomScrollView comece do topo
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        // O botão do menu é gerenciado automaticamente pelo Scaffold
+        title: GlassContainer(
+          borderRadius: 50,
+          child: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: Text(
+              "Whale Music",
+              style: TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
         ),
+        centerTitle: true,
       ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Padding(
+                    // kToolbarHeight é a altura padrão da AppBar, garantindo que o conteúdo não fique escondido
+                    padding: const EdgeInsets.fromLTRB(
+                      16.0,
+                      kToolbarHeight + 40,
+                      16.0,
+                      0,
+                    ),
+                    child: Text(
+                      "Sugestão",
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(child: _buildSuggestionCard()),
+                _buildViewSelector(),
+                _buildCurrentView(),
+              ],
+            ),
     );
   }
 
@@ -262,11 +251,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildAlbumGrid() {
-    if (_albums.isEmpty) {
+    if (_albums.isEmpty)
       return const SliverToBoxAdapter(
         child: Center(child: Text("Nenhum álbum encontrado.")),
       );
-    }
 
     return SliverPadding(
       padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 90.0),
@@ -330,11 +318,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildSongList() {
-    if (_songs.isEmpty) {
+    if (_songs.isEmpty)
       return const SliverToBoxAdapter(
         child: Center(child: Text("Nenhuma música encontrada.")),
       );
-    }
 
     final displaySongs = _songs
         .where((s) => !s.data.contains('WhatsApp'))
@@ -372,11 +359,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildArtistList() {
-    if (_artists.isEmpty) {
+    if (_artists.isEmpty)
       return const SliverToBoxAdapter(
         child: Center(child: Text("Nenhum artista encontrado.")),
       );
-    }
 
     return SliverPadding(
       padding: const EdgeInsets.only(bottom: 90.0),
@@ -391,7 +377,7 @@ class _HomeScreenState extends State<HomeScreen> {
               "${artist.numberOfAlbums} Álbuns | ${artist.numberOfTracks} Músicas",
             ),
             onTap: () async {
-              final songs = await _audioQuery.queryAudiosFrom(
+              List<SongModel> songs = await _audioQuery.queryAudiosFrom(
                 AudiosFromType.ARTIST_ID,
                 artist.id,
               );

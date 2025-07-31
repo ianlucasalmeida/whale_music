@@ -10,8 +10,8 @@ import 'package:whale_music/services/settings_manager.dart';
 import 'package:whale_music/widgets/glass_container.dart';
 import 'package:audio_service/audio_service.dart';
 
-// Função auxiliar para formatar a duração de forma legível
-String formatDuration(Duration d) {
+String formatDuration(Duration? d) {
+  if (d == null) return "00:00";
   final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
   final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
   return "$minutes:$seconds";
@@ -87,11 +87,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
         setState(() => _dominantColor = Theme.of(context).colorScheme.primary);
       return;
     }
-
     final artwork = await OnAudioQuery().queryArtwork(
       songId,
       ArtworkType.AUDIO,
-      size: 400,
+      size: 200,
     );
     if (artwork != null && mounted) {
       final imageProvider = MemoryImage(artwork);
@@ -160,24 +159,22 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   Widget _buildMainContent(MediaItem currentSong) {
-    return Positioned.fill(
-      bottom: 100,
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 25.0),
-          child: Column(
-            children: [
-              _buildAppBar(currentSong),
-              const Spacer(flex: 2),
-              _buildAlbumArtCard(int.parse(currentSong.id)),
-              const SizedBox(height: 30),
-              _buildSongInfo(currentSong),
-              const Spacer(),
-              _buildSongProgress(),
-              const SizedBox(height: 10),
-              _buildMediaControls(),
-            ],
-          ),
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 25.0),
+        child: Column(
+          children: [
+            _buildAppBar(currentSong),
+            const Spacer(flex: 2),
+            _buildAlbumArtCard(int.parse(currentSong.id)),
+            const SizedBox(height: 30),
+            _buildSongInfo(currentSong),
+            const Spacer(),
+            _buildSongProgress(),
+            const SizedBox(height: 10),
+            _buildMediaControls(),
+            const Spacer(flex: 3), // Aumenta o recuo para o painel
+          ],
         ),
       ),
     );
@@ -280,7 +277,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     return StreamBuilder<MediaItem?>(
       stream: _audioHandler.mediaItem,
       builder: (context, mediaItemSnapshot) {
-        final duration = mediaItemSnapshot.data?.duration ?? Duration.zero;
+        final duration = mediaItemSnapshot.data?.duration;
         return StreamBuilder<PlaybackState>(
           stream: _audioHandler.playbackState,
           builder: (context, playbackStateSnapshot) {
@@ -291,9 +288,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 Slider(
                   value: position.inMilliseconds.toDouble().clamp(
                     0.0,
-                    duration.inMilliseconds.toDouble(),
+                    duration?.inMilliseconds.toDouble() ?? 1.0,
                   ),
-                  max: duration.inMilliseconds.toDouble() + 1.0,
+                  max: duration?.inMilliseconds.toDouble() ?? 1.0,
                   onChanged: (value) =>
                       _audioHandler.seek(Duration(milliseconds: value.toInt())),
                   activeColor: Colors.white,
@@ -438,8 +435,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   Widget _buildDraggablePlaylist() {
     return DraggableScrollableSheet(
-      initialChildSize: 0.12,
-      minChildSize: 0.12,
+      initialChildSize: 0.1,
+      minChildSize: 0.1,
       maxChildSize: 0.7,
       builder: (BuildContext context, ScrollController scrollController) {
         return GlassContainer(

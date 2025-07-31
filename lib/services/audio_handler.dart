@@ -11,6 +11,7 @@ Future<MyAudioHandler> initAudioService() async {
       androidNotificationChannelId: 'com.ianalmeida.whalemusic.channel.audio',
       androidNotificationChannelName: 'Whale Music',
       androidNotificationOngoing: true,
+      androidStopForegroundOnPause: true,
     ),
   );
 }
@@ -28,6 +29,7 @@ class MyAudioHandler extends BaseAudioHandler {
   MyAudioHandler() {
     _loadEmptyPlaylist();
     _notifyAudioHandlerAboutPlaybackEvents();
+    _listenForDurationChanges();
     _listenForCurrentSongIndexChanges();
     _listenForSequenceStateChanges();
   }
@@ -40,13 +42,27 @@ class MyAudioHandler extends BaseAudioHandler {
     }
   }
 
-  // --- CORREÇÃO AQUI ---
   void _listenForCurrentSongIndexChanges() {
     _player.currentIndexStream.listen((index) {
       final playlist = queue.value;
-      // Adicionamos uma verificação para garantir que o índice é válido para a lista atual
       if (index != null && playlist.isNotEmpty && index < playlist.length) {
         mediaItem.add(playlist[index]);
+      }
+    });
+  }
+
+  void _listenForDurationChanges() {
+    _player.durationStream.listen((duration) {
+      final index = _player.currentIndex;
+      final playlist = queue.value;
+      if (index != null && playlist.isNotEmpty && index < playlist.length) {
+        var item = playlist[index];
+        if (item.duration != duration) {
+          item = item.copyWith(duration: duration);
+          mediaItem.add(item);
+          playlist[index] = item;
+          queue.add(playlist);
+        }
       }
     });
   }
@@ -137,19 +153,14 @@ class MyAudioHandler extends BaseAudioHandler {
 
   @override
   Future<void> play() => _player.play();
-
   @override
   Future<void> pause() => _player.pause();
-
   @override
   Future<void> seek(Duration position) => _player.seek(position);
-
   @override
   Future<void> skipToNext() => _player.seekToNext();
-
   @override
   Future<void> skipToPrevious() => _player.seekToPrevious();
-
   @override
   Future<void> skipToQueueItem(int index) async {
     if (index < 0 || index >= _playlist.length) return;
