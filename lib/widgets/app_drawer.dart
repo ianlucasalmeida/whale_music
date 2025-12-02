@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:whale_music/screens/favorites_screen.dart';
+import 'package:whale_music/screens/playlists_screen.dart'; // Importa a tela de playlists
 import 'package:whale_music/screens/settings_screen.dart';
 import 'package:whale_music/services/audio_handler.dart';
 import 'package:whale_music/services/service_locator.dart';
@@ -12,8 +13,7 @@ class AppDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Drawer(
-      backgroundColor:
-          Colors.transparent, // Fundo transparente para o efeito de vidro
+      backgroundColor: Colors.transparent, // Fundo transparente para o efeito de vidro
       child: ClipRRect(
         // Corta o conteúdo para aplicar o efeito de vidro
         borderRadius: const BorderRadius.only(
@@ -39,9 +39,7 @@ class AppDrawer extends StatelessWidget {
               children: <Widget>[
                 DrawerHeader(
                   decoration: BoxDecoration(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.primary.withOpacity(0.5),
+                    color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
                   ),
                   child: const Text(
                     'Whale Music',
@@ -68,6 +66,21 @@ class AppDrawer extends StatelessWidget {
                     );
                   },
                 ),
+                // --- NOVO ITEM: SOB MEDIDA (PLAYLISTS) ---
+                ListTile(
+                  leading: const Icon(Icons.queue_music),
+                  title: const Text('Sob Medida'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const PlaylistsScreen(),
+                      ),
+                    );
+                  },
+                ),
+                // -----------------------------------------
                 const Divider(),
                 ListTile(
                   leading: const Icon(Icons.settings),

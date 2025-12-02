@@ -5,6 +5,7 @@ import 'package:on_audio_query/on_audio_query.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:whale_music/screens/album_details_screen.dart';
 import 'package:whale_music/screens/player_screen.dart';
+import 'package:whale_music/screens/search_screen.dart'; // Importa a tela de busca
 import 'package:whale_music/services/audio_handler.dart';
 import 'package:whale_music/services/service_locator.dart';
 import 'package:whale_music/widgets/app_drawer.dart';
@@ -23,8 +24,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final OnAudioQuery _audioQuery = OnAudioQuery();
   final audioHandler = getIt<MyAudioHandler>();
   HomeViewType _currentView = HomeViewType.albums;
-
-  // Cache para as mídias, evitando buscas repetidas e lentidão
+  
   List<SongModel> _songs = [];
   List<AlbumModel> _albums = [];
   List<ArtistModel> _artists = [];
@@ -39,44 +39,56 @@ class _HomeScreenState extends State<HomeScreen> {
   void requestPermissionsAndFetch() async {
     final status = await Permission.audio.request();
     if (status.isGranted) {
-      // Busca tudo uma única vez para otimizar a performance
       _songs = await _audioQuery.querySongs();
       _albums = await _audioQuery.queryAlbums(sortType: AlbumSortType.ARTIST);
       _artists = await _audioQuery.queryArtists();
-      if (mounted)
-        setState(() {
-          _isLoading = false;
-        });
+      if (mounted) setState(() { _isLoading = false; });
     } else {
-      if (mounted)
-        setState(() {
-          _isLoading = false;
-        });
+      if (mounted) setState(() { _isLoading = false; });
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // O drawer agora recebe o audioHandler para passar para a tela de favoritos
       drawer: AppDrawer(audioHandler: audioHandler),
-      // Usamos extendBodyBehindAppBar para que o CustomScrollView comece do topo
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        // O botão do menu é gerenciado automaticamente pelo Scaffold
         title: GlassContainer(
           borderRadius: 50,
-          child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-            child: Text(
-              "Whale Music",
-              style: TextStyle(fontWeight: FontWeight.bold),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // --- AQUI VAI O SEU LOGO ---
+                // Se você adicionou o arquivo em assets/logo.png, descomente a linha abaixo:
+                // Image.asset('assets/logo.png', height: 24),
+                // Se não, use este ícone como placeholder:
+                const Icon(Icons.music_note, size: 20, color: Colors.blueAccent),
+                const SizedBox(width: 8),
+                const Text("Whale Music", style: TextStyle(fontWeight: FontWeight.bold)),
+              ],
             ),
           ),
         ),
         centerTitle: true,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: GlassContainer(
+              borderRadius: 50,
+              child: IconButton(
+                icon: const Icon(Icons.search, color: Colors.white),
+                onPressed: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => const SearchScreen()));
+                },
+              ),
+            ),
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -84,18 +96,8 @@ class _HomeScreenState extends State<HomeScreen> {
               slivers: [
                 SliverToBoxAdapter(
                   child: Padding(
-                    // kToolbarHeight é a altura padrão da AppBar, garantindo que o conteúdo não fique escondido
-                    padding: const EdgeInsets.fromLTRB(
-                      16.0,
-                      kToolbarHeight + 40,
-                      16.0,
-                      0,
-                    ),
-                    child: Text(
-                      "Sugestão",
-                      style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.bold),
-                    ),
+                    padding: const EdgeInsets.fromLTRB(16.0, kToolbarHeight + 40, 16.0, 0),
+                    child: Text("Sugestão", style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
                   ),
                 ),
                 SliverToBoxAdapter(child: _buildSuggestionCard()),
@@ -105,41 +107,28 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
     );
   }
-
-  Widget _buildViewSelector() {
+  
+  // ... Resto do arquivo (widgets _buildViewSelector, _buildCurrentView, etc.)
+  // (Você pode manter os mesmos que já estavam funcionando do código anterior)
+  // ...
+  
+   Widget _buildViewSelector() {
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16.0, 24.0, 8.0, 16.0),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              _getViewTitle(),
-              style: Theme.of(
-                context,
-              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-            ),
+            Text(_getViewTitle(), style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
             PopupMenuButton<HomeViewType>(
               onSelected: (HomeViewType result) {
-                setState(() {
-                  _currentView = result;
-                });
+                setState(() { _currentView = result; });
               },
-              itemBuilder: (BuildContext context) =>
-                  <PopupMenuEntry<HomeViewType>>[
-                    const PopupMenuItem<HomeViewType>(
-                      value: HomeViewType.albums,
-                      child: Text('Álbuns'),
-                    ),
-                    const PopupMenuItem<HomeViewType>(
-                      value: HomeViewType.artists,
-                      child: Text('Artistas'),
-                    ),
-                    const PopupMenuItem<HomeViewType>(
-                      value: HomeViewType.songs,
-                      child: Text('Músicas'),
-                    ),
-                  ],
+              itemBuilder: (BuildContext context) => <PopupMenuEntry<HomeViewType>>[
+                const PopupMenuItem<HomeViewType>(value: HomeViewType.albums, child: Text('Álbuns')),
+                const PopupMenuItem<HomeViewType>(value: HomeViewType.artists, child: Text('Artistas')),
+                const PopupMenuItem<HomeViewType>(value: HomeViewType.songs, child: Text('Músicas')),
+              ],
               icon: const Icon(Icons.arrow_forward_ios, size: 18),
             ),
           ],
@@ -150,36 +139,26 @@ class _HomeScreenState extends State<HomeScreen> {
 
   String _getViewTitle() {
     switch (_currentView) {
-      case HomeViewType.artists:
-        return 'Artistas';
-      case HomeViewType.songs:
-        return 'Músicas';
+      case HomeViewType.artists: return 'Artistas';
+      case HomeViewType.songs: return 'Músicas';
       case HomeViewType.albums:
-      default:
-        return 'Álbuns';
+      default: return 'Álbuns';
     }
   }
 
   Widget _buildCurrentView() {
     switch (_currentView) {
-      case HomeViewType.artists:
-        return _buildArtistList();
-      case HomeViewType.songs:
-        return _buildSongList();
+      case HomeViewType.artists: return _buildArtistList();
+      case HomeViewType.songs: return _buildSongList();
       case HomeViewType.albums:
-      default:
-        return _buildAlbumGrid();
+      default: return _buildAlbumGrid();
     }
   }
 
   Widget _buildSuggestionCard() {
     if (_songs.isEmpty) return const SizedBox.shrink();
-
-    final allSongs = _songs
-        .where((song) => !song.data.contains('WhatsApp'))
-        .toList();
+    final allSongs = _songs.where((song) => !song.data.contains('WhatsApp')).toList();
     if (allSongs.isEmpty) return const SizedBox.shrink();
-
     final randomSong = allSongs[Random().nextInt(allSongs.length)];
 
     return Padding(
@@ -194,13 +173,7 @@ class _HomeScreenState extends State<HomeScreen> {
             await audioHandler.setShuffleMode(AudioServiceShuffleMode.all);
             final songIndex = allSongs.indexWhere((s) => s.id == randomSong.id);
             if (songIndex != -1) audioHandler.skipToQueueItem(songIndex);
-
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => PlayerScreen(audioHandler: audioHandler),
-              ),
-            );
+            Navigator.push(context, MaterialPageRoute(builder: (context) => PlayerScreen(audioHandler: audioHandler)));
           },
           child: Padding(
             padding: const EdgeInsets.all(8.0),
@@ -208,40 +181,19 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: QueryArtworkWidget(
-                    id: randomSong.id,
-                    type: ArtworkType.AUDIO,
-                    artworkWidth: 60,
-                    artworkHeight: 60,
-                    nullArtworkWidget: Container(
-                      width: 60,
-                      height: 60,
-                      color: Colors.grey.shade800,
-                      child: const Icon(Icons.music_note),
-                    ),
-                  ),
+                  child: QueryArtworkWidget(id: randomSong.id, type: ArtworkType.AUDIO, artworkWidth: 60, artworkHeight: 60, nullArtworkWidget: Container(width: 60, height: 60, color: Colors.grey.shade800, child: const Icon(Icons.music_note))),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        randomSong.title,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        randomSong.artist ?? "Desconhecido",
-                        style: const TextStyle(fontSize: 12),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      Text(randomSong.title, style: const TextStyle(fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      Text(randomSong.artist ?? "Desconhecido", style: const TextStyle(fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
                     ],
                   ),
                 ),
-                const Icon(Icons.play_circle_fill, size: 30),
+                const Icon(Icons.play_circle_fill, size: 30)
               ],
             ),
           ),
@@ -249,12 +201,9 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-
+  
   Widget _buildAlbumGrid() {
-    if (_albums.isEmpty)
-      return const SliverToBoxAdapter(
-        child: Center(child: Text("Nenhum álbum encontrado.")),
-      );
+    if (_albums.isEmpty) return const SliverToBoxAdapter(child: Center(child: Text("Nenhum álbum encontrado.")));
 
     return SliverPadding(
       padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 90.0),
@@ -269,12 +218,7 @@ class _HomeScreenState extends State<HomeScreen> {
           final album = _albums[index];
           return GestureDetector(
             onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => AlbumDetailsScreen(album: album),
-                ),
-              );
+              Navigator.push(context, MaterialPageRoute(builder: (context) => AlbumDetailsScreen(album: album)));
             },
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -283,32 +227,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   aspectRatio: 1.0,
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: QueryArtworkWidget(
-                      id: album.id,
-                      type: ArtworkType.ALBUM,
-                      artworkFit: BoxFit.cover,
-                      size: 200,
-                      quality: 75,
-                      nullArtworkWidget: Container(
-                        color: Colors.grey.shade800,
-                        child: const Icon(Icons.album),
-                      ),
-                    ),
+                    child: QueryArtworkWidget(id: album.id, type: ArtworkType.ALBUM, artworkFit: BoxFit.cover, size: 200, quality: 75, nullArtworkWidget: Container(color: Colors.grey.shade800, child: const Icon(Icons.album))),
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  album.album,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  album.artist ?? "Desconhecido",
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12),
-                ),
+                Text(album.album, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(album.artist ?? "Desconhecido", maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
               ],
             ),
           );
@@ -318,15 +242,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildSongList() {
-    if (_songs.isEmpty)
-      return const SliverToBoxAdapter(
-        child: Center(child: Text("Nenhuma música encontrada.")),
-      );
-
-    final displaySongs = _songs
-        .where((s) => !s.data.contains('WhatsApp'))
-        .toList();
-
+    if (_songs.isEmpty) return const SliverToBoxAdapter(child: Center(child: Text("Nenhuma música encontrada.")));
+    final displaySongs = _songs.where((s) => !s.data.contains('WhatsApp')).toList();
     return SliverPadding(
       padding: const EdgeInsets.only(bottom: 90.0),
       sliver: SliverList(
@@ -334,23 +251,13 @@ class _HomeScreenState extends State<HomeScreen> {
           final song = displaySongs[index];
           return ListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
-            leading: QueryArtworkWidget(
-              id: song.id,
-              type: ArtworkType.AUDIO,
-              nullArtworkWidget: const Icon(Icons.music_note),
-            ),
+            leading: QueryArtworkWidget(id: song.id, type: ArtworkType.AUDIO, nullArtworkWidget: const Icon(Icons.music_note)),
             title: Text(song.title, maxLines: 1),
             subtitle: Text(song.artist ?? "Desconhecido", maxLines: 1),
             onTap: () {
               audioHandler.loadPlaylist(displaySongs);
               audioHandler.skipToQueueItem(index);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      PlayerScreen(audioHandler: audioHandler),
-                ),
-              );
+              Navigator.push(context, MaterialPageRoute(builder: (context) => PlayerScreen(audioHandler: audioHandler)));
             },
           );
         }, childCount: displaySongs.length),
@@ -359,11 +266,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildArtistList() {
-    if (_artists.isEmpty)
-      return const SliverToBoxAdapter(
-        child: Center(child: Text("Nenhum artista encontrado.")),
-      );
-
+    if (_artists.isEmpty) return const SliverToBoxAdapter(child: Center(child: Text("Nenhum artista encontrado.")));
     return SliverPadding(
       padding: const EdgeInsets.only(bottom: 90.0),
       sliver: SliverList(
@@ -373,23 +276,12 @@ class _HomeScreenState extends State<HomeScreen> {
             contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
             leading: const Icon(Icons.person),
             title: Text(artist.artist),
-            subtitle: Text(
-              "${artist.numberOfAlbums} Álbuns | ${artist.numberOfTracks} Músicas",
-            ),
+            subtitle: Text("${artist.numberOfAlbums} Álbuns | ${artist.numberOfTracks} Músicas"),
             onTap: () async {
-              List<SongModel> songs = await _audioQuery.queryAudiosFrom(
-                AudiosFromType.ARTIST_ID,
-                artist.id,
-              );
+              List<SongModel> songs = await _audioQuery.queryAudiosFrom(AudiosFromType.ARTIST_ID, artist.id);
               audioHandler.loadPlaylist(songs);
               audioHandler.skipToQueueItem(0);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      PlayerScreen(audioHandler: audioHandler),
-                ),
-              );
+              Navigator.push(context, MaterialPageRoute(builder: (context) => PlayerScreen(audioHandler: audioHandler)));
             },
           );
         }, childCount: _artists.length),
